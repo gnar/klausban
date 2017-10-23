@@ -36,6 +36,7 @@ parseWorld level = consume elems emptyWorld { wSize = (sizeX, sizeY) }
       '#' -> consume elems world { wWalls = pos : (wWalls world) }
       'o' -> consume elems world { wCrates = pos : (wCrates world) }
       '.' -> consume elems world { wSlots = pos : (wSlots world) }
+      '*' -> consume elems world { wCrates = pos : (wCrates world), wSlots = pos : (wSlots world) }
       '@' -> consume elems world { wPlayer = pos }
       ' ' -> consume elems world
       otherwise -> error "undefined tile"
@@ -54,6 +55,7 @@ renderWorld world = renderAllRows
     renderRow y = [ renderCell (x, y) | x <- [0 .. (fst $ wSize world) - 1] ]
     renderCell pos = case () of () | isWall world pos -> '#'
                                    | pos == wPlayer world -> '@'
+                                   | isCrate world pos && isSlot world pos -> '*'
                                    | isCrate world pos -> 'o'
                                    | isSlot world pos -> '.'
                                    | otherwise -> ' '
