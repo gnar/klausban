@@ -4,10 +4,17 @@ import System.IO(hFlush, hSetEcho, stdin, stdout)
 import Data.List(sort, delete)
 import Control.Applicative((<$>))
 import Text.Printf(printf)
+import Control.Monad.State
 
 type Coord = (Integer, Integer) 
 
 data Input = KLeft | KRight | KUp | KDown | KReset deriving (Eq, Show)
+
+advance (x, y) KLeft  = (x-1, y)
+advance (x, y) KRight = (x+1, y)
+advance (x, y) KUp    = (x, y-1)
+advance (x, y) KDown  = (x, y+1)
+advance (x, y) KReset = undefined
 
 data World = World { wPlayer
                    , wSize :: Coord
@@ -58,35 +65,31 @@ renderWorld world = renderAllRows
                                    | isSlot world pos -> '.'
                                    | otherwise -> ' '
 
-updateWorld :: World -> Input -> World
-updateWorld world input = 
-  
-  case () of () | isPushWall -> world
-                | isPushCrate -> if canMoveCrate then moveCrate $ movePlayer world else world
-                | otherwise -> movePlayer world
-
-  where
-    pos   = wPlayer world
-    pos'  = advance pos input
-    pos'' = advance pos' input
-
-    advance (x, y) input = case input of 
-      KLeft  -> (x-1, y)
-      KRight -> (x+1, y)
-      KUp    -> (x, y-1)
-      KDown  -> (x, y+1)
-
-    isPushWall   = isWall world pos'
-    isPushCrate  = isCrate world pos'
-    canMoveCrate = not (isWall world pos'') && not (isCrate world pos'')
-
-    movePlayer world = world { wPlayer = pos', wSteps = 1 + wSteps world }
-    moveCrate  world = world { wCrates = pos'' : (delete pos' $ wCrates world) }
-
 renderHud :: World -> String
-renderHud world = "---- [ Steps " ++ (show steps) ++ " ] ----"
-  where
-    steps = wSteps world
+renderHud world = "---- [ Steps " ++ (show $ wSteps world) ++ " ] ----"
+
+--------
+
+moveCrate  p1 p2 = get >>= (\w -> put w { wCrates = p2 : (delete p1 $ wCrates w)})
+movePlayer     p = get >>= (\w -> put w { wPlayer = p })
+passTime         = get >>= (\w -> put w { wSteps = 1 + (wSteps w) })
+
+updateWorld :: Input -> State World ()
+updateWorld input = do
+  w <- get
+
+  let p1 = wPlayer w
+  let p2 = advance p1 input
+  let p3 = advance p2 input
+
+  let pushingWall  = isWall w p2
+  let pushingCrate = isCrate w p2
+  let canMoveCrate = not (isWall w p3) && not (isCrate w p3)
+
+  case (pushingWall, pushingCrate, canMoveCrate) of
+    (False, False,    _) ->                    movePlayer p2 >> passTime -- move freely
+    (False,  True, True) -> moveCrate p2 p3 >> movePlayer p2 >> passTime -- move crate
+    otherwise            -> put w                                        -- invalid move
 
 --------
 
@@ -117,7 +120,7 @@ mainloop world = do
       input <- getPlayerInput
       if input == KReset
         then return ()
-        else mainloop $ updateWorld world input
+        else mainloop $ execState (updateWorld input) world
 
 main :: IO ()
 main = do 
