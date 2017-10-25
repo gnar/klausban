@@ -8,5 +8,5 @@ Heavily inspired by the excellent YouTube [live-coding session](https://www.yout
 
 ```sh
 cd klausban
-cabal run
+runhaskell src/Main
 ```

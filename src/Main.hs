@@ -1,10 +1,15 @@
 module Main where
 
 import System.IO(hFlush, hSetEcho, stdin, stdout)
-import Data.List(sort, delete)
+
 import Control.Applicative((<$>))
-import Text.Printf(printf)
 import Control.Monad.State
+
+import Data.List(sort, delete)
+import Text.Printf(printf)
+
+import System.Console.ANSI
+
 
 type Coord = (Integer, Integer) 
 
@@ -111,13 +116,13 @@ loadWorld filename = parseWorld <$> lines <$> readFile filename
 
 mainloop :: World -> IO ()
 mainloop world = do
+  clearScreen
   putStrLn ""
   putStrLn $ unlines $ renderWorld world
   putStrLn $ renderHud world
   if isWorldSolved world
     then do
       putStrLn "Congratulations!"
-      return ()
     else do
       input <- getPlayerInput
       if input == KReset
